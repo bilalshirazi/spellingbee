@@ -135,8 +135,6 @@
             border-radius: 5px;
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
-            margin: 0.5rem;
-            font-size: 0.7rem;
         }
 
         #audio-controls button:hover {
@@ -165,7 +163,7 @@
             cursor: pointer;
             font-family: 'Press Start 2P', cursive;
             font-size: 0.7rem;
-            display: inline-block;
+            display: inline-block; /* Ensure it's always visible by default */
         }
 
         #submit-button:hover {
@@ -303,7 +301,7 @@
             { word: "hodgepodge", sentence: "The room was a ______ of old furniture." },
             { word: "swollen", sentence: "His ankle was ______ after the fall." },
             { word: "diagonal", sentence: "Draw a ______ line from corner to corner." },
-            { word: "superlative", sentence: "She used a ______ adjective like 'best'." осо
+            { word: "superlative", sentence: "She used a ______ adjective like 'best'." },
             { word: "macaw", sentence: "A colorful ______ flew through the jungle." },
             { word: "victorian", sentence: "The house had a beautiful ______ design." },
             { word: "fulfilling", sentence: "Helping others can be a very ______ experience." },
@@ -465,50 +463,35 @@
 
         function checkSpelling() {
             const userGuess = spellingInput.value.toLowerCase();
-            let wordNumber = wordList.findIndex(item => item.word.toLowerCase() === currentWord) + 1;
+            // Find the original index of the current word in the full wordList
+            // This ensures the word number corresponds to the PDF's numbering
+            let originalWordIndex = wordList.findIndex(item => item.word.toLowerCase() === currentWord);
+            let wordNumber = originalWordIndex !== -1 ? originalWordIndex + 1 : currentWordIndex + 1;
 
 
-            if (spellingMode === "word") {
-                if (userGuess === currentWord) {
-                    feedback.textContent = `Correct! Word #${wordNumber}`;
-                    feedback.style.color = "green";
-                    correctCount++;
-                } else {
-                    feedback.textContent = `Incorrect! Word #${wordNumber}. The word was "${currentWord}".`;
-                    feedback.style.color = "red";
-                    incorrectCount++;
-                    wordDisplay.classList.add("reveal-word");
-                }
-            } else { // Letter-by-letter mode
-                let expectedLetters = currentWord.split('');
-                let correctLetters = 0;
-                for (let i = 0; i < Math.min(userGuess.length, expectedLetters.length); i++) {
-                    if (userGuess[i] === expectedLetters[i]) {
-                        correctLetters++;
-                    }
-                }
-                if (userGuess === currentWord) {
-                    feedback.textContent = `Correct! Word #${wordNumber}`;
-                    feedback.style.color = "green";
-                    correctCount++;
-                } else {
-                    feedback.textContent = `Incorrect! Word #${wordNumber}. The word was "${currentWord}".`;
-                    feedback.style.color = "red";
-                    incorrectCount++;
-                    wordDisplay.classList.add("reveal-word");
-                }
+            if (userGuess === currentWord) {
+                feedback.textContent = `Correct! Word #${wordNumber}`;
+                feedback.style.color = "green";
+                correctCount++;
+            } else {
+                feedback.textContent = `Incorrect! Word #${wordNumber}. The word was "${currentWord}".`;
+                feedback.style.color = "red";
+                incorrectCount++;
+                wordDisplay.classList.add("reveal-word");
             }
 
             spellingInput.disabled = true;
             nextWordButton.style.display = "inline-block";
-            pronounceButton.disabled = true;
-            useInSentenceButton.disabled = true;
-            submitButton.style.display = "inline-block";
-            microphoneButton.disabled = true;
+            // Keep relevant buttons enabled for review, disable others
+            pronounceButton.disabled = false; // Allow re-pronounce
+            useInSentenceButton.disabled = false; // Allow re-use in sentence
+            submitButton.style.display = "none"; // Hide submit after checking
+            microphoneButton.disabled = true; // Disable mic after checking
+            
             if (currentWordIndex >= wordOrder.length - 1) {
                 feedback.textContent = `Game Over! Correct: ${correctCount}, Incorrect: ${incorrectCount}`;
                 nextWordButton.style.display = "none";
-                playAgainButton.disabled = false;
+                playAgainButton.disabled = false; // Enable play again at end
             }
         }
 
@@ -523,7 +506,7 @@
             currentWordIndex = 0;
             correctCount = 0;
             incorrectCount = 0;
-            wordOrder = []; // Reset word order
+            wordOrder = []; // Reset word order to get new shuffle
             displayWord();
         }
 
@@ -536,26 +519,28 @@
             speechSynthesis.speak(utterance);
         }
 
-
-
         function useInSentence() {
             if (!currentWord) return;
             const wordData = wordList.find(item => item.word.toLowerCase() === currentWord);
-            const sentence = wordData.sentence.replace(/______/g, wordData.word); // Replace ______ with the word
-            const displaySentence = wordData.sentence; // Keep the original sentence with blanks for display
-            currentSentence = sentence;
-            wordDisplay.textContent = displaySentence; // Use the sentence with blanks for display
+            // Sentence for speaking (with word)
+            const spokenSentence = wordData.sentence.replace(/______/g, wordData.word);
+            // Sentence for display (with blanks)
+            const displaySentence = wordData.sentence; 
+            
+            wordDisplay.textContent = displaySentence; // Display sentence with blanks
             wordDisplay.classList.add("reveal-word");
             spellingInput.value = "";
             spellingInput.focus();
-            submitButton.style.display = "inline-block";
-            pronounceButton.disabled = false;
-            useInSentenceButton.disabled = false;
+            
+            // Keep relevant buttons enabled, disable others
+            pronounceButton.disabled = false; 
+            useInSentenceButton.disabled = true; // Disable itself after being used
             microphoneButton.disabled = false;
-            const utterance = new SpeechSynthesisUtterance(sentence);
+            submitButton.style.display = "inline-block"; // Ensure submit is visible
+
+            const utterance = new SpeechSynthesisUtterance(spokenSentence);
             utterance.lang = 'en-US';
             utterance.rate = 0.8;
-            utterance.text = sentence; // Ensure the full sentence is passed to speak
             speechSynthesis.speak(utterance);
         }
 
@@ -564,87 +549,99 @@
         }
 
         function startSpeechRecognition() {
-            if ('webkitSpeechRecognition' in window) {
-                recognition = new webkitSpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = 'en-US';
-
-                recognition.onstart = function () {
-                    feedback.textContent = "Listening...";
-                    feedback.style.color = "blue";
-                    spellingInput.value = "";
-                    spellingInput.disabled = true;
-                    submitButton.style.display = "none";
-                    microphoneActive = true;
-                    // Disable other buttons
-                   
-                    playAgainButton.disabled = true;
-                    nextWordButton.disabled = true;
-
-                };
-
-                recognition.onerror = function (event) {
-                    if (event.error === 'not-allowed') {
-                        feedback.textContent = "Please allow microphone access, then try again.";
-                        feedback.style.color = "red";
-                    } else {
-                        feedback.textContent = "Error: " + event.error;
-                        feedback.style.color = "red";
-                    }
-                    spellingInput.disabled = false;
-                    submitButton.style.display = "inline-block";
-                    microphoneActive = false;
-                    // Re-enable buttons
-                    
-                    useInSentenceButton.disabled = false;
-                    playAgainButton.disabled = false;
-                    nextWordButton.disabled = false;
-                };
-
-                recognition.onend = function () {
-                    feedback.textContent = "";
-                    spellingInput.disabled = false;
-                    submitButton.style.display = "inline-block";
-                    microphoneActive = false;
-                    // Re-enable buttons
-                    
-                    useInSentenceButton.disabled = false;
-                    playAgainButton.disabled = false;
-                    nextWordButton.disabled = false;
-                };
-
-                recognition.onresult = function (event) {
-                    const transcript = event.results[0][0].transcript.toLowerCase();
-                    spellingInput.value = transcript;
-                };
-
-                // Request user permission to use the microphone
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(function (stream) {
-                        recognition.start();
-                    })
-                    .catch(function (err) {
-                        feedback.textContent = "Error accessing microphone: " + err.message;
-                        feedback.style.color = "red";
-                        spellingInput.disabled = false;
-                        submitButton.style.display = "inline-block";
-                        microphoneActive = false;
-                        // Re-enable buttons
-                       
-                        useInSentenceButton.disabled = false;
-                        playAgainButton.disabled = false;
-                        nextWordButton.disabled = false;
-                        console.error("Error accessing microphone:", err);
-                    });
-
-               
-                useInSentenceButton.disabled = false;
-                microphoneButton.disabled = true;
-            } else {
+            if (!('webkitSpeechRecognition' in window)) {
                 feedback.textContent = "Speech recognition is not supported in this browser.";
                 feedback.style.color = "red";
+                return;
             }
+
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function () {
+                feedback.textContent = "Listening...";
+                feedback.style.color = "blue";
+                spellingInput.value = "";
+                spellingInput.disabled = true;
+                submitButton.style.display = "inline-block"; // Keep submit visible
+                microphoneActive = true;
+                
+                // Disable other control buttons while listening
+                pronounceButton.disabled = true;
+                useInSentenceButton.disabled = true;
+                playAgainButton.disabled = true;
+                nextWordButton.disabled = true;
+                microphoneButton.disabled = true; // Disable itself while active
+            };
+
+            recognition.onerror = function (event) {
+                if (event.error === 'not-allowed') {
+                    feedback.textContent = "Please allow microphone access, then try again.";
+                } else if (event.error === 'no-speech') {
+                    feedback.textContent = "No speech detected. Please try again.";
+                } else if (event.error === 'aborted') {
+                     feedback.textContent = "Microphone input aborted.";
+                }
+                else {
+                    feedback.textContent = "Error: " + event.error;
+                }
+                feedback.style.color = "red";
+                console.error("Speech recognition error:", event.error);
+                
+                // Re-enable input and buttons
+                spellingInput.disabled = false;
+                submitButton.style.display = "inline-block"; 
+                microphoneActive = false;
+                pronounceButton.disabled = false;
+                useInSentenceButton.disabled = false;
+                playAgainButton.disabled = false;
+                nextWordButton.disabled = false;
+                microphoneButton.disabled = false; // Re-enable mic button
+            };
+
+            recognition.onend = function () {
+                feedback.textContent = ""; // Clear listening feedback
+                spellingInput.disabled = false;
+                submitButton.style.display = "inline-block"; // Ensure submit is visible
+                microphoneActive = false;
+                
+                // Re-enable control buttons
+                pronounceButton.disabled = false;
+                useInSentenceButton.disabled = false;
+                playAgainButton.disabled = false;
+                nextWordButton.disabled = false;
+                microphoneButton.disabled = false; // Re-enable mic button
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[0][0].transcript.toLowerCase().trim(); // Trim whitespace
+                spellingInput.value = transcript;
+                // Automatically submit after speech recognition result
+                checkSpelling(); 
+            };
+
+            // Request user permission to use the microphone
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    // Stop tracks immediately after getting permission, as recognition.start() will handle its own stream
+                    stream.getTracks().forEach(track => track.stop()); 
+                    recognition.start();
+                })
+                .catch(function (err) {
+                    feedback.textContent = "Error accessing microphone: " + err.message + ". Please allow access in browser settings.";
+                    feedback.style.color = "red";
+                    spellingInput.disabled = false;
+                    submitButton.style.display = "inline-block";
+                    microphoneActive = false;
+                    pronounceButton.disabled = false;
+                    useInSentenceButton.disabled = false;
+                    playAgainButton.disabled = false;
+                    nextWordButton.disabled = false;
+                    microphoneButton.disabled = false; // Re-enable mic button
+                    console.error("Error accessing microphone:", err);
+                });
         }
 
 
@@ -672,20 +669,6 @@
                 checkSpelling();
             }
         });
-
-        // Request microphone access on page load
-        /*
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-                //  Do nothing here to just get the permission
-                stream.getTracks().forEach(track => track.stop()); // Stop the stream
-            })
-            .catch(function (err) {
-                feedback.textContent = "Microphone access is recommended for the 'Spell with Mic' feature: " + err.message;
-                feedback.style.color = "red";
-                console.error("Error accessing microphone:", err);
-            });
-        */
 
         // Start the game
         displayWord();
