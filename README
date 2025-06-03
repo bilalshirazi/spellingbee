@@ -1,0 +1,99 @@
+# Interactive Spelling Bee Application: How It Works
+
+This document explains the functionality and technical implementation of the interactive spelling bee application.
+
+## What the Application Is
+
+The Interactive Spelling Bee is a web-based application designed to help users practice their spelling skills. It provides an engaging and customizable experience, allowing users to:
+
+* Hear words pronounced.
+
+* Type their spelling guesses.
+
+* Receive immediate feedback on their accuracy.
+
+* Get additional context by hearing the word used in a sentence.
+
+* Use a microphone to speak their spelling.
+
+* Select word lists based on different grade levels.
+
+* Play through randomized word sets.
+
+## How It Works (User Perspective)
+
+1.  **Grade Selection:** Upon loading, the user can select a grade level (Grade 4, 5, 6, or 7) from a dropdown menu. This determines the set of words for the current game.
+
+2.  **Word Presentation:** The application automatically pronounces a word from the selected grade's list. The word itself is initially hidden.
+
+3.  **Typing and Submitting:** The user types their spelling guess into the input box. They can then click the "Submit Answer" button or press Enter to check their spelling.
+
+4.  **Feedback:** After submission, the application provides immediate feedback, indicating whether the spelling was "Correct!" or "Incorrect!". If incorrect, it reveals the correct spelling and states the word number from the original PDF list.
+
+5.  **"Use in Sentence" Feature:** If the user needs a hint, they can click "Use in Sentence." The application will display the word's sentence with a blank where the word should be, and simultaneously speak the *entire* sentence (including the word).
+
+6.  **"Spell with Mic" Feature:** Users can click "Spell with Mic" to activate their microphone. The application will listen for their spoken spelling, transcribe it into the input box, and automatically submit it.
+
+7.  **Navigation:** After a guess, a "Next Word" button appears to proceed to the next word in the list.
+
+8.  **Game End & Restart:** Once all words in the selected list have been presented, the game ends, displaying a summary of correct and incorrect answers. A "Play Again" button becomes active, allowing the user to restart the game with a new randomized set of words from the current grade.
+
+## How It Was Built (Technical Implementation)
+
+The application is built using standard web technologies: HTML, CSS, and JavaScript.
+
+* **HTML (Structure):**
+
+    * Provides the basic layout of the game, including the title, grade selection dropdown, word display area, input field, control buttons ("Pronounce Word," "Use in Sentence," "Spell with Mic," "Play Again," "Submit Answer"), and feedback area.
+
+    * Uses semantic elements for clarity.
+
+* **CSS (Styling & Responsiveness):**
+
+    * Applies a retro, pixel-art aesthetic using the "Press Start 2P" font.
+
+    * Ensures the layout is fully **responsive** and adapts to various screen sizes (mobile, tablet, desktop) using flexible box (`display: flex`) and media queries.
+
+    * Manages the visual state of buttons (e.g., greyed out when disabled, hover effects).
+
+    * Controls the initial hidden state of the word display (`opacity: 0`) and its reveal (`.reveal-word` class).
+
+* **JavaScript (Core Logic & Interactivity):**
+
+    * **Word Management:**
+
+        * The `wordListsByGrade` object stores all words and their corresponding sentences, categorized by grade level, directly from your provided PDF.
+
+        * The `shuffleArray` function (Fisher-Yates algorithm) randomizes the order of words for each new game.
+
+        * `displayWord()`: Initializes the game state for each new word, shuffles the list if needed, and triggers the initial pronunciation.
+
+    * **Game Flow Control:**
+
+        * `currentWordIndex`, `correctCount`, `incorrectCount` track game progress.
+
+        * `checkSpelling()`: Compares user input to the `currentWord`, updates scores, provides visual feedback, and handles game-ending conditions. It also finds the original word number from the PDF list.
+
+        * `nextWord()` and `playAgain()`: Manage advancing through words and restarting the game.
+
+    * **Web Speech API Integration:**
+
+        * **Speech Synthesis (`SpeechSynthesisUtterance`):** Used in `pronounceWord()` to speak the current word and in `useIn Sentence()` to speak the full contextual sentence. It ensures the correct text is passed for natural pronunciation.
+
+        * **Speech Recognition (`webkitSpeechRecognition`):**
+
+            * Implemented in `startSpeechRecognition()`.
+
+            * **Permission Handling:** Explicitly requests microphone access using `navigator.mediaDevices.getUserMedia()` when the "Spell with Mic" button is first clicked. It includes error handling for "not-allowed" and "no-speech" scenarios, providing user-friendly messages.
+
+            * **Real-time Feedback:** Updates the feedback area to "Listening..." when active.
+
+            * **Automatic Submission:** Automatically populates the input field with the transcribed speech and triggers `checkSpelling()` once speech is detected.
+
+            * **Button State Management:** Carefully enables/disables control buttons (`pronounceButton`, `useInSentenceButton`, `playAgainButton`, `nextWordButton`, `microphoneButton`, `submitButton`) to prevent conflicting actions during microphone use.
+
+    * **Event Listeners:** Connects user interactions (button clicks, Enter key press, grade selection change) to the corresponding JavaScript functions.
+
+This application is designed to be a self-contained HTML file, making it easy to run locally in a browser or deploy to a web hosting service that supports static files and HTTPS (which is crucial for the microphone feature).
+
+You can try out the live application here: <https://bilalshirazi.github.io/spellingbee/>
